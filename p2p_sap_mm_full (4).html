@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP MM — Procure-to-Pay (P2P) Full Cycle</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --bg2:       #13161e;
+    --bg3:       #1a1e2a;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --text:      #e8eaf0;
+    --text2:     #8a8fa8;
+    --text3:     #55596e;
+    --accent:    #4f8ef7;
+    --accent2:   #7b5cfa;
+    --green:     #3ecf8e;
+    --amber:     #f5a623;
+    --red:       #f05252;
+    --teal:      #38bdf8;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Sora', sans-serif;
+    --r:         8px;
+    --r2:        12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 0;
+    height: 52px;
+  }
+  .nav-brand {
+    font-size: 13px; font-weight: 600; letter-spacing: .04em;
+    color: var(--text); white-space: nowrap; margin-right: 2rem;
+  }
+  .nav-brand span { color: var(--accent); }
+  .nav-tabs { display: flex; gap: 0; overflow-x: auto; flex: 1; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    padding: 0 16px; height: 52px; display: flex; align-items: center;
+    font-size: 12px; font-weight: 500; color: var(--text3);
+    cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap; transition: color .15s, border-color .15s;
+    font-family: var(--sans);
+  }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .page { display: none; padding: 2.5rem 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 3rem 2rem 2rem; max-width: 1100px; margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .12em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: .75rem;
+    font-family: var(--mono);
+  }
+  .hero h1 { font-size: clamp(22px, 3vw, 34px); font-weight: 600; line-height: 1.25; margin-bottom: .75rem; }
+  .hero p { font-size: 14px; color: var(--text2); max-width: 640px; }
+  .hero-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1.25rem; }
+  .pill {
+    font-size: 11px; font-family: var(--mono); padding: 4px 10px;
+    border-radius: 4px; border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+
+  /* ── SECTION HEADINGS ── */
+  .sec-head { margin-bottom: 1.5rem; }
+  .sec-head h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sec-head p  { font-size: 13px; color: var(--text2); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(79,142,247,0.07);
+    border-radius: 0 var(--r) var(--r) 0;
+    padding: 12px 16px; margin-bottom: 1.5rem;
+    font-size: 13px; color: var(--text2); line-height: 1.6;
+  }
+  .callout strong { color: var(--text); }
+
+  /* ── STAGE CARDS (Process Flow) ── */
+  .stages { display: flex; flex-direction: column; gap: 0; }
+  .stage-wrap { position: relative; }
+  .stage-connector {
+    width: 2px; height: 24px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    margin-left: 23px; opacity: .4;
+  }
+  .stage-card {
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    background: var(--bg2);
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stage-card:hover { border-color: var(--border2); }
+  .stage-card.open { border-color: var(--accent); }
+  .stage-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; cursor: pointer;
+  }
+  .stage-num {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; font-family: var(--mono);
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--accent);
+  }
+  .stage-meta { flex: 1; }
+  .stage-title { font-size: 14px; font-weight: 600; }
+  .stage-subtitle { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+  .stage-tags { display: flex; gap: 6px; }
+  .tag { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; }
+  .tag-blue  { background: rgba(79,142,247,.15); color: var(--accent); }
+  .tag-green { background: rgba(62,207,142,.12); color: var(--green); }
+  .tag-amber { background: rgba(245,166,35,.12); color: var(--amber); }
+  .tag-red   { background: rgba(240,82,82,.12);  color: var(--red); }
+  .tag-teal  { background: rgba(56,189,248,.12); color: var(--teal); }
+  .stage-toggle { color: var(--text3); font-size: 16px; transition: transform .2s; }
+  .stage-card.open .stage-toggle { transform: rotate(180deg); }
+  .stage-body {
+    display: none; padding: 0 18px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .stage-card.open .stage-body { display: block; }
+  .sb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  @media (max-width: 640px) { .sb-grid { grid-template-columns: 1fr; } }
+  .sb-block h4 {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text3); font-family: var(--mono); margin-bottom: 8px;
+  }
+  .sb-block p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    font-size: 11px; font-family: var(--mono); padding: 3px 8px;
+    border-radius: 4px; border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .chip.tx    { background: rgba(79,142,247,.1); border-color: rgba(79,142,247,.3); color: var(--accent); }
+  .chip.doc   { background: rgba(62,207,142,.1); border-color: rgba(62,207,142,.3); color: var(--green); }
+  .chip.cfg   { background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.3); color: var(--amber); }
+  .chip.mvt   { background: rgba(123,92,250,.1); border-color: rgba(123,92,250,.3); color: var(--accent2); }
+
+  /* ── TABLES ── */
+  .tbl-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3); background: var(--bg3); font-family: var(--mono);
+    border-bottom: 1px solid var(--border2);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px; font-size: 13px; color: var(--text);
+    border-bottom: 1px solid var(--border); vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .mono-cell { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .muted { color: var(--text2); font-size: 12px; }
+
+  /* ── DOC FLOW ── */
+  .doc-flow-strip {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    padding: 1.25rem; background: var(--bg3); border-radius: var(--r2);
+    border: 1px solid var(--border); margin-bottom: 1.5rem;
+  }
+  .doc-node {
+    text-align: center; padding: 8px 14px;
+    border: 1px solid var(--border2); border-radius: var(--r);
+    background: var(--bg2); min-width: 110px;
+  }
+  .doc-node-name { font-size: 12px; font-weight: 600; }
+  .doc-node-tx   { font-size: 10px; font-family: var(--mono); color: var(--text3); margin-top: 2px; }
+  .doc-node.mm  { border-color: rgba(79,142,247,.4); background: rgba(79,142,247,.06); }
+  .doc-node.mm .doc-node-name { color: var(--accent); }
+  .doc-node.fi  { border-color: rgba(62,207,142,.4); background: rgba(62,207,142,.06); }
+  .doc-node.fi .doc-node-name { color: var(--green); }
+  .doc-arr { color: var(--text3); font-size: 16px; }
+
+  /* ── CONFIG GRID ── */
+  .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .cfg-card {
+    border: 1px solid var(--border); border-radius: var(--r2);
+    background: var(--bg2); padding: 14px 16px;
+  }
+  .cfg-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+  .cfg-card ul { list-style: none; }
+  .cfg-card ul li {
+    font-size: 12px; color: var(--text2); padding: 4px 0;
+    border-bottom: 1px solid var(--border); line-height: 1.5;
+    display: flex; gap: 7px; align-items: flex-start;
+  }
+  .cfg-card ul li:last-child { border-bottom: none; }
+  .cfg-card ul li::before {
+    content: '›'; color: var(--accent); font-size: 13px;
+    flex-shrink: 0; margin-top: -1px;
+  }
+  .cfg-path {
+    font-size: 11px; font-family: var(--mono); color: var(--amber);
+    background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.2);
+    border-radius: 4px; padding: 8px 12px; margin-bottom: 1rem;
+  }
+
+  /* ── FI ACCOUNTING ── */
+  .fi-intro {
+    display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .fi-stat {
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 12px 14px; background: var(--bg2);
+  }
+  .fi-stat-label { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-bottom: 4px; }
+  .fi-stat-value { font-size: 13px; font-weight: 600; }
+
+  /* ── MATCH BOX ── */
+  .match-box {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    padding: 1rem; border-radius: var(--r2); margin-bottom: 1.5rem;
+    border: 1px solid rgba(62,207,142,.25);
+    background: rgba(62,207,142,.04);
+  }
+  .match-item {
+    flex: 1; min-width: 150px; text-align: center;
+    padding: 10px; border-radius: var(--r);
+    background: rgba(62,207,142,.08); border: 1px solid rgba(62,207,142,.2);
+  }
+  .match-item .mi-icon { font-size: 20px; margin-bottom: 4px; }
+  .match-item .mi-label { font-size: 13px; font-weight: 600; color: var(--green); }
+  .match-item .mi-sub   { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .match-eq { display: flex; align-items: center; font-size: 20px; color: var(--green); }
+
+  /* ── CHECKLIST ── */
+  .cl-group { margin-bottom: 1rem; }
+  .cl-group-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: var(--r) var(--r) 0 0;
+    cursor: pointer;
+  }
+  .cl-group-header h4 { font-size: 13px; font-weight: 600; }
+  .cl-progress { font-size: 11px; font-family: var(--mono); color: var(--text3); }
+  .cl-items { border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+  .cl-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .12s;
+  }
+  .cl-item:last-child { border-bottom: none; }
+  .cl-item:hover { background: rgba(255,255,255,0.02); }
+  .cl-check {
+    width: 17px; height: 17px; border-radius: 4px; flex-shrink: 0;
+    border: 1px solid var(--border2); margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .cl-item.done .cl-check { background: var(--green); border-color: var(--green); }
+  .cl-item.done .cl-text { color: var(--text3); text-decoration: line-through; }
+  .cl-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .cl-total {
+    font-size: 12px; font-family: var(--mono); color: var(--text3);
+    text-align: right; margin-top: 8px;
+  }
+  .progress-bar { height: 3px; border-radius: 2px; background: var(--border2); margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 2px; transition: width .3s; }
+
+  /* ── MOVEMENT TYPES ── */
+  .mvt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .mvt-card {
+    border: 1px solid var(--border); border-radius: var(--r); padding: 12px;
+    background: var(--bg2);
+  }
+  .mvt-num { font-size: 20px; font-weight: 600; font-family: var(--mono); color: var(--accent2); }
+  .mvt-name { font-size: 12px; color: var(--text); margin-top: 3px; font-weight: 500; }
+  .mvt-desc { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* ── RELEASE STRATEGY ── */
+  .rs-flow { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
+  .rs-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border: 1px solid var(--border);
+    background: var(--bg2); border-radius: var(--r); margin-bottom: 4px;
+  }
+  .rs-code { font-size: 12px; font-family: var(--mono); color: var(--accent2); min-width: 60px; }
+  .rs-name { font-size: 13px; color: var(--text); }
+  .rs-cond { font-size: 11px; color: var(--text3); margin-left: auto; font-family: var(--mono); }
+
+  /* ── MISC ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+  .infobox {
+    border: 1px solid var(--border); border-radius: var(--r2);
+    padding: 14px 16px; background: var(--bg2); margin-bottom: 12px;
+  }
+  .infobox h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .infobox p, .infobox li { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .infobox ul { padding-left: 16px; }
+  .spacer { margin-bottom: 1.5rem; }
+  .label-row { display: flex; gap: 8px; align-items: center; margin-bottom: .5rem; }
+  .badge { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">SAP MM <span>·</span> P2P</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview',this)">Overview</button>
+    <button class="nav-tab" onclick="showPage('process',this)">Process Flow</button>
+    <button class="nav-tab" onclick="showPage('transactions',this)">Transactions</button>
+    <button class="nav-tab" onclick="showPage('documents',this)">Documents</button>
+    <button class="nav-tab" onclick="showPage('movement',this)">Movement Types</button>
+    <button class="nav-tab" onclick="showPage('release',this)">Release Strategy</button>
+    <button class="nav-tab" onclick="showPage('config',this)">Configuration</button>
+    <button class="nav-tab" onclick="showPage('fi',this)">FI Integration</button>
+    <button class="nav-tab" onclick="showPage('checklist',this)">Checklist</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-label">SAP Materials Management</div>
+  <h1>Procure-to-Pay (P2P)<br>Full Purchasing Cycle</h1>
+  <p>Complete reference covering every stage from purchase requisition to vendor payment — including transaction codes, document flow, movement types, FI account determination, and implementation checklist.</p>
+  <div class="hero-pills">
+    <span class="pill">SAP ECC 6.0 / S/4HANA</span>
+    <span class="pill">Module: MM + FI-AP</span>
+    <span class="pill">7 Process Steps</span>
+    <span class="pill">25+ T-Codes</span>
+    <span class="pill">3-Way Match</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: OVERVIEW
+══════════════════════════════════════════════════ -->
+<div id="page-overview" class="page active">
+  <div class="sec-head">
+    <h2>What is Procure-to-Pay?</h2>
+    <p>End-to-end process from identifying a procurement need to paying the vendor</p>
+  </div>
+  <div class="callout">
+    <strong>P2P</strong> (Procure-to-Pay) is the complete business process cycle in SAP MM that starts when a department identifies a need for goods or services and ends when the vendor is paid. It spans three SAP modules: <strong>MM</strong> (Materials Management), <strong>FI-AP</strong> (Accounts Payable), and optionally <strong>CO</strong> (Controlling) for cost assignment.
+  </div>
+  <div class="grid-2 spacer">
+    <div class="infobox">
+      <h4>Core Process Steps</h4>
+      <ul>
+        <li>1. Purchase Requisition (PR)</li>
+        <li>2. Source Determination</li>
+        <li>3. Request for Quotation (RFQ)</li>
+        <li>4. Purchase Order (PO)</li>
+        <li>5. Goods Receipt (GR)</li>
+        <li>6. Invoice Verification (MIRO)</li>
+        <li>7. Payment (F110)</li>
+      </ul>
+    </div>
+    <div class="infobox">
+      <h4>Key Integration Points</h4>
+      <ul>
+        <li>MM ↔ FI: Automatic accounting documents on GR and MIRO</li>
+        <li>MM ↔ CO: Cost center / order assignment on PO</li>
+        <li>MM ↔ WM: Transfer orders for warehouse-managed storage locations</li>
+        <li>MM ↔ SD: Stock transfers, returns</li>
+        <li>MM ↔ PP: MRP-driven purchase requisitions</li>
+      </ul>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="infobox">
+      <h4>Organisational Structure Required</h4>
+      <ul>
+        <li>Client (mandant)</li>
+        <li>Company code → FI entity</li>
+        <li>Plant → production/storage site</li>
+        <li>Purchasing organisation → legal purchasing entity</li>
+        <li>Purchasing group → buyer group</li>
+        <li>Storage location → physical store</li>
+      </ul>
+    </div>
+    <div class="infobox">
+      <h4>Master Data Prerequisites</h4>
+      <ul>
+        <li>Vendor master (XK01) — all views</li>
+        <li>Material master (MM01) — purchasing, MRP, accounting views</li>
+        <li>Purchasing info record (ME11)</li>
+        <li>Source list (ME01) — if mandatory</li>
+        <li>Account determination / valuation class</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: PROCESS FLOW
+══════════════════════════════════════════════════ -->
+<div id="page-process" class="page">
+  <div class="sec-head">
+    <h2>Full P2P Process Flow</h2>
+    <p>Click any step to expand the full detail — transaction codes, documents, configuration, accounting impact, and common issues.</p>
+  </div>
+  <div class="stages" id="stages-container"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: TRANSACTIONS
+══════════════════════════════════════════════════ -->
+<div id="page-transactions" class="page">
+  <div class="sec-head">
+    <h2>Transaction Codes</h2>
+    <p>All key t-codes used throughout the P2P cycle, grouped by functional area.</p>
+  </div>
+  <div class="tbl-wrap">
+    <table id="tx-table">
+      <thead>
+        <tr>
+          <th>T-Code</th><th>Description</th><th>Area</th><th>Typical User</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="tx-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: DOCUMENTS
+══════════════════════════════════════════════════ -->
+<div id="page-documents" class="page">
+  <div class="sec-head">
+    <h2>Document Flow</h2>
+    <p>The P2P cycle produces a chain of linked documents. Each references the prior one — enabling full audit traceability via ME23N → MB03 → MIR4.</p>
+  </div>
+  <div class="doc-flow-strip">
+    <div class="doc-node mm"><div class="doc-node-name">Purch. Req.</div><div class="doc-node-tx">ME51N · 10xxxxxxxx</div></div>
+    <span class="doc-arr">→</span>
+    <div class="doc-node mm"><div class="doc-node-name">RFQ</div><div class="doc-node-tx">ME41 · 60xxxxxxxx</div></div>
+    <span class="doc-arr">→</span>
+    <div class="doc-node mm"><div class="doc-node-name">Purch. Order</div><div class="doc-node-tx">ME21N · 45xxxxxxxx</div></div>
+    <span class="doc-arr">→</span>
+    <div class="doc-node"><div class="doc-node-name">Goods Receipt</div><div class="doc-node-tx">MIGO · 50xxxxxxxx</div></div>
+    <span class="doc-arr">→</span>
+    <div class="doc-node fi"><div class="doc-node-name">Invoice (LIV)</div><div class="doc-node-tx">MIRO · 5xxxxxxxxx</div></div>
+    <span class="doc-arr">→</span>
+    <div class="doc-node fi"><div class="doc-node-name">Payment</div><div class="doc-node-tx">F110 · FI clearing</div></div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Document</th><th>T-Code</th><th>Doc Type</th><th>Number Range</th><th>Key Fields</th><th>Cancel Via</th></tr></thead>
+      <tbody id="doc-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: MOVEMENT TYPES
+══════════════════════════════════════════════════ -->
+<div id="page-movement" class="page">
+  <div class="sec-head">
+    <h2>Movement Types (Inventory Management)</h2>
+    <p>Movement types control how goods movements are posted and which accounts are updated. Configured via OMJJ.</p>
+  </div>
+  <div class="callout">
+    <strong>Key principle:</strong> Every goods movement in MIGO/MB1A/MB1B is controlled by a 3-digit movement type. The movement type determines: stock type affected, account keys for FI posting, print output, and whether a reversal is allowed.
+  </div>
+  <div class="mvt-grid" id="mvt-grid"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Mvt</th><th>Description</th><th>Stock Effect</th><th>Account (Dr)</th><th>Account (Cr)</th><th>GR Ref Required</th></tr></thead>
+      <tbody id="mvt-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: RELEASE STRATEGY
+══════════════════════════════════════════════════ -->
+<div id="page-release" class="page">
+  <div class="sec-head">
+    <h2>Release (Approval) Strategy</h2>
+    <p>SAP uses a classification-based release strategy for both PR and PO approval workflows.</p>
+  </div>
+  <div class="callout">
+    The release strategy in SAP MM uses the <strong>Classification system</strong> (not workflow). Characteristics (e.g., total value, plant, purchasing group) are assigned to a class, which is linked to a release strategy defining who must approve at which step. Path: <strong>SPRO → MM → Purchasing → Purchase Requisition → Release Procedure</strong>.
+  </div>
+  <div class="grid-2 spacer">
+    <div class="infobox">
+      <h4>Release Strategy Components</h4>
+      <ul>
+        <li><strong>Release group</strong> — groups of strategies (e.g. for PR, for PO)</li>
+        <li><strong>Release codes</strong> — individual approver codes (e.g. 01=Buyer, 02=Manager)</li>
+        <li><strong>Release indicators</strong> — status per step (blocked, released, final release)</li>
+        <li><strong>Release prerequisite</strong> — defines the approval sequence</li>
+        <li><strong>Classification class</strong> — links characteristics to strategy determination</li>
+        <li><strong>Characteristics</strong> — CEBAN fields: GSWRT (total value), WERKS (plant), EKGRP (purch. group)</li>
+      </ul>
+    </div>
+    <div class="infobox">
+      <h4>Transaction Codes</h4>
+      <ul>
+        <li>ME54N — Release individual PR</li>
+        <li>ME55 — Collective release (PRs)</li>
+        <li>ME28 — Release PO</li>
+        <li>ME29N — Release PO (new)</li>
+        <li>CL24N — Display classification assignments</li>
+        <li>CT04 — Maintain characteristics</li>
+        <li>CL02 — Maintain classes</li>
+      </ul>
+    </div>
+  </div>
+  <h4 style="font-size:13px;font-weight:600;margin-bottom:10px">Typical 2-Level PR Release Strategy (by value)</h4>
+  <div class="rs-flow">
+    <div class="rs-step"><span class="rs-code">Step 01</span><span class="rs-name">Buyer reviews and releases PR</span><span class="rs-cond">All PRs (no value limit)</span></div>
+    <div class="rs-step"><span class="rs-code">Step 02</span><span class="rs-name">Manager final approval</span><span class="rs-cond">Total value &gt; $10,000</span></div>
+  </div>
+  <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;margin-top:1.5rem">Configuration Steps</h4>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Step</th><th>Menu Path (SPRO)</th><th>T-Code</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Define characteristics (GSWRT etc.)</td><td>MM → Purch → PR → Release Procedure → Define Characteristics</td><td class="mono-cell">CT04</td></tr>
+        <tr><td>2</td><td>Create class (type 032) for PR</td><td>MM → Purch → PR → Release Procedure → Define Classes</td><td class="mono-cell">CL02</td></tr>
+        <tr><td>3</td><td>Define release groups</td><td>MM → Purch → PR → Release Procedure → Set Up Procedure → Define Release Groups</td><td class="mono-cell">SPRO</td></tr>
+        <tr><td>4</td><td>Define release codes</td><td>...→ Define Release Codes</td><td class="mono-cell">SPRO</td></tr>
+        <tr><td>5</td><td>Define release indicators</td><td>...→ Define Release Indicators</td><td class="mono-cell">SPRO</td></tr>
+        <tr><td>6</td><td>Define release strategy</td><td>...→ Define Release Strategies</td><td class="mono-cell">SPRO</td></tr>
+        <tr><td>7</td><td>Assign classification to strategy</td><td>...→ Check Release Strategies</td><td class="mono-cell">SPRO</td></tr>
+        <tr><td>8</td><td>Test determination</td><td>Use ME51N → save → check release tab</td><td class="mono-cell">ME54N</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CONFIGURATION
+══════════════════════════════════════════════════ -->
+<div id="page-config" class="page">
+  <div class="sec-head">
+    <h2>IMG Configuration</h2>
+    <p>All key Customizing settings required for a fully working P2P cycle.</p>
+  </div>
+  <div class="cfg-path">SPRO → SAP Reference IMG → Materials Management</div>
+  <div class="cfg-grid" id="cfg-grid"></div>
+  <div style="margin-top:1.5rem">
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:1rem">Key Output Determination — Purchase Order</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Output Type</th><th>Description</th><th>Medium</th><th>Partner Function</th><th>T-Code to View</th></tr></thead>
+        <tbody>
+          <tr><td>NEU</td><td>New PO output (print/email)</td><td>1 = Print, 5 = EDI, 7 = Email</td><td>LF (Vendor)</td><td class="mono-cell">ME9F</td></tr>
+          <tr><td>MAHNA</td><td>Delivery reminder (expediting)</td><td>1 = Print</td><td>LF (Vendor)</td><td class="mono-cell">ME91F</td></tr>
+          <tr><td>AUFB</td><td>PO order acknowledgement</td><td>5 = EDI</td><td>LF (Vendor)</td><td class="mono-cell">ME23N</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: FI INTEGRATION
+══════════════════════════════════════════════════ -->
+<div id="page-fi" class="page">
+  <div class="sec-head">
+    <h2>FI Integration &amp; Account Determination</h2>
+    <p>Every goods movement and invoice in MM automatically creates FI accounting documents via account determination (OBYC).</p>
+  </div>
+  <div class="match-box">
+    <div class="match-item">
+      <div class="mi-icon">📋</div>
+      <div class="mi-label">Purchase Order</div>
+      <div class="mi-sub">ME21N · Price</div>
+    </div>
+    <div class="match-eq">=</div>
+    <div class="match-item">
+      <div class="mi-icon">📦</div>
+      <div class="mi-label">Goods Receipt</div>
+      <div class="mi-sub">MIGO · Quantity</div>
+    </div>
+    <div class="match-eq">=</div>
+    <div class="match-item">
+      <div class="mi-icon">🧾</div>
+      <div class="mi-label">Invoice</div>
+      <div class="mi-sub">MIRO · Amount</div>
+    </div>
+    <div class="match-eq">→</div>
+    <div class="match-item" style="border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.12)">
+      <div class="mi-icon">✓</div>
+      <div class="mi-label" style="color:var(--green)">3-Way Match</div>
+      <div class="mi-sub">Auto-clear</div>
+    </div>
+  </div>
+  <div class="fi-intro">
+    <div class="fi-stat"><div class="fi-stat-label">Account determination T-Code</div><div class="fi-stat-value mono-cell">OBYC</div></div>
+    <div class="fi-stat"><div class="fi-stat-label">GR/IR clearing account</div><div class="fi-stat-value mono-cell">WRX</div></div>
+    <div class="fi-stat"><div class="fi-stat-label">Stock account key</div><div class="fi-stat-value mono-cell">BSX</div></div>
+    <div class="fi-stat"><div class="fi-stat-label">Auto GR/IR clearing</div><div class="fi-stat-value mono-cell">F.13 / F13E</div></div>
+  </div>
+  <div class="tbl-wrap spacer">
+    <table>
+      <thead><tr><th>Event</th><th>T-Code / Mvmt</th><th>Debit Account</th><th>Credit Account</th><th>OBYC Key</th><th>Notes</th></tr></thead>
+      <tbody id="fi-body"></tbody>
+    </table>
+  </div>
+  <h3 style="font-size:15px;font-weight:600;margin-bottom:1rem">Account Keys (OBYC) Reference</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Key</th><th>Name</th><th>Used When</th></tr></thead>
+      <tbody>
+        <tr><td class="mono-cell">BSX</td><td>Stock posting</td><td>GR against PO — stock account Dr (MAP or standard price)</td></tr>
+        <tr><td class="mono-cell">WRX</td><td>GR/IR clearing</td><td>GR posts Cr WRX; MIRO posts Dr WRX — net = 0 after 3-way match</td></tr>
+        <tr><td class="mono-cell">GBB-VBR</td><td>Offsetting (consumption)</td><td>GR to cost centre — cost account Dr instead of stock</td></tr>
+        <tr><td class="mono-cell">GBB-PRY</td><td>Offsetting (scrapping)</td><td>Movement type 551 — scrapping cost account</td></tr>
+        <tr><td class="mono-cell">PRD</td><td>Price difference</td><td>Invoice price ≠ PO price on S-price material</td></tr>
+        <tr><td class="mono-cell">KBS</td><td>Vendor account</td><td>MIRO — vendor liability Cr</td></tr>
+        <tr><td class="mono-cell">FR1</td><td>Freight clearing</td><td>Planned delivery costs on PO</td></tr>
+        <tr><td class="mono-cell">AKO</td><td>Account maintenance</td><td>Differences when GR/IR cleared (F.13)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CHECKLIST
+══════════════════════════════════════════════════ -->
+<div id="page-checklist" class="page">
+  <div class="sec-head">
+    <h2>Implementation Checklist</h2>
+    <p>Step-by-step project checklist. Click items to mark as complete.</p>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="main-progress" style="width:0%"></div></div>
+  <div class="cl-total" id="cl-total" style="margin-bottom:1.5rem">0 of 0 tasks complete</div>
+  <div id="checklist-container"></div>
+</div>
+
+<script>
+// ═══════════════════════════════
+// DATA
+// ═══════════════════════════════
+const stages = [
+  {
+    num:1, title:"Purchase Requisition (PR)", tx:"ME51N / ME52N / ME53N",
+    category:"Internal request",
+    desc:"An internal procurement document raised by a department to request goods or services. Can be created manually by a user, or automatically by MRP (Materials Requirements Planning) when stock falls below reorder point. The PR is an internal document — it is never sent to a vendor. It is subject to an approval (release) strategy before it can be converted to a Purchase Order.",
+    tcodes:["ME51N – Create PR","ME52N – Change PR","ME53N – Display PR","ME54N – Release PR","ME55 – Collective release","ME5A – PR list by material","ME5K – PR list by account"],
+    docs:["Purchase Requisition (doc type NB)","Release (approval) document"],
+    config:["Release strategy via classification (CEBAN)","PR document types & number ranges","Account assignment categories (K=cost centre, P=project, A=asset)","Item categories (standard, consignment, subcontracting, third-party)"],
+    accounting:"No FI posting at PR stage. Cost commitment may be recorded in CO/FM (Funds Management).",
+    issues:["PR stuck in release — check classification values match strategy","No source found — maintain info record or source list","MRP-generated PR wrong qty — check MRP parameters (MD02/MD04)"]
+  },
+  {
+    num:2, title:"Source Determination", tx:"ME56 / ME57 / ME58",
+    category:"Sourcing",
+    desc:"The system identifies valid sources of supply for PR items. Sources include purchasing info records, outline agreements (contracts/scheduling agreements), and source lists. The buyer can auto-assign the best source or manually select one. Source determination can be made mandatory via SPRO. Leads directly to PO creation or RFQ issue.",
+    tcodes:["ME56 – Assign source to PR","ME57 – Assign and process PR","ME58 – Adopt and create PO","ME6B – Display source list","MEQ1 – Quota arrangement"],
+    docs:["Source list (maintained via ME01)","Quota arrangement","Purchasing info record"],
+    config:["Source list required (plant-level setting)","Info record: plant-specific or cross-plant","Quota arrangement for split sourcing"],
+    accounting:"No FI posting.",
+    issues:["Multiple sources exist — use quota arrangement to split","Source list mandatory but missing — ME01 not maintained","Info record price outdated — update via ME12"]
+  },
+  {
+    num:3, title:"Request for Quotation (RFQ)", tx:"ME41 / ME47 / ME49",
+    category:"Vendor selection",
+    desc:"RFQs are sent to multiple vendors requesting pricing and delivery terms. Vendors respond with quotations which are entered in SAP. The price comparison list (ME49) allows side-by-side comparison. The winning quotation is accepted and can be converted to a PO. Rejected quotations receive rejection letters.",
+    tcodes:["ME41 – Create RFQ","ME42 – Change RFQ","ME43 – Display RFQ","ME47 – Maintain quotation","ME48 – Display quotation","ME49 – Price comparison list","ME4S – RFQ by vendor"],
+    docs:["RFQ document (doc type AN, 60xxxxxxxx)","Vendor quotation","Rejection letter (output type ABSA)"],
+    config:["Collective number for grouping RFQs","Quotation deadline","Submission deadline","Bid invitation output (NEU for RFQ)"],
+    accounting:"No FI posting. Quotation prices stored for analysis only.",
+    issues:["RFQ not sent to vendor — check output determination","Prices not comparable — ensure same base unit of measure","Quotation expired — reissue RFQ before deadline"]
+  },
+  {
+    num:4, title:"Purchase Order (PO)", tx:"ME21N / ME22N / ME23N",
+    category:"Commitment",
+    desc:"The legally binding procurement document sent to the vendor. Contains all terms: material, quantity, price, delivery date, plant, storage location, account assignment, and payment terms. In S/4HANA, ME21N is the primary transaction. Several PO document types exist: NB (standard), FO (framework order), MK (consignment), LP (scheduling agreement call-off).",
+    tcodes:["ME21N – Create PO","ME22N – Change PO","ME23N – Display PO","ME2M – POs by material","ME2L – POs by vendor","ME2N – POs by number","ME9F – Print/output PO","ME57 – Auto-create PO from PR","MEMASSPO – Mass maintenance"],
+    docs:["Purchase Order (45xxxxxxxx)","PO output (NEU — print/email/EDI/fax)","Order acknowledgement (if GF set)"],
+    config:["PO document types: NB (standard), FO (framework), MK (consignment)","Number ranges per document type","GR indicator / GR-based IV indicator","Tolerance keys (price/quantity)","Output determination (condition technique)","Incoterms / payment terms defaults","Tax code on PO item"],
+    accounting:"No FI posting on PO creation. Purchase order creates a commitment in CO/FM. Budget check if Funds Management active.",
+    issues:["Price differs from info record — check validity period ME12","GR-based IV not set — invoice will allow posting without GR","PO blocked after release — check ME28","Tax code missing — check vendor master or PO defaults"]
+  },
+  {
+    num:5, title:"Goods Receipt (GR)", tx:"MIGO (Mvmt 101) / MB03",
+    category:"Inventory",
+    desc:"Physical receipt of goods at the plant/warehouse against the Purchase Order. In MIGO, movement type 101 is used (GR with reference to PO). The system checks open PO quantities and tolerances. On saving, a material document and FI accounting document are created simultaneously. Stock quantities and values are updated. The GR/IR (Goods Receipt/Invoice Receipt) clearing account is credited.",
+    tcodes:["MIGO – Goods movement (main)","MB03 – Display material document","MMBE – Stock overview","MB52 – Warehouse stocks","MB51 – Material document list","MB90 – Output for GR (GR slip)","MIGO_GR – GR entry (shortcut)"],
+    docs:["Material document (50xxxxxxxx)","Accounting document (FI)","GR slip output (WE01/WE02/WE03)"],
+    config:["Movement type 101 settings (OMJJ)","Storage location auto-creation at GR","GR-based invoice verification on PO","Valuation class on material master (MM03 → Accounting 1)","Automatic account determination (OBYC: BSX, WRX)","Under/over delivery tolerances on PO"],
+    accounting:"Material document created. Accounting: Dr Stock Account (BSX) / Cr GR/IR Clearing (WRX). If account-assigned PO: Dr Cost Account / Cr GR/IR.",
+    issues:["GR quantity exceeds PO — over-delivery tolerance exceeded","Storage location not found — auto-creation not active","Accounting document not generated — valuation class not linked to G/L in OBYC","Batch required but not entered — batch management active on material"]
+  },
+  {
+    num:6, title:"Invoice Verification (LIV)", tx:"MIRO / MIR7 / MRBR",
+    category:"Payables",
+    desc:"The vendor's invoice is entered in Logistics Invoice Verification (MIRO). The system performs the 3-way match: PO price × GR quantity × invoice amount. Tolerances are checked (price, quantity, amount). If tolerances are exceeded, the invoice is automatically blocked (R-block or QM-block). Blocked invoices are released via MRBR. Parked invoices (MIR7) are held for review before posting.",
+    tcodes:["MIRO – Enter LIV invoice","MIR7 – Park invoice","MIR4 – Display invoice document","MRBR – Release blocked invoices","MR8M – Cancel invoice document","MRRL – ERS (auto invoice)","MIR6 – Invoice overview","MRM0 – Tolerance configuration preview"],
+    docs:["LIV invoice document (5xxxxxxxxx)","FI accounting document (KR type)","Parked document (if MIR7 used)"],
+    config:["Tolerance keys (OMRX): BD=small diff, BR=relative diff, BW=qty variance, PP=price variance, ST=date variance","ERS (Evaluated Receipt Settlement): automatic invoice on GR","GR-based IV: invoice only after GR","Stochastic block (random audit)","Tax code and jurisdiction code"],
+    accounting:"Accounting: Dr GR/IR Clearing (WRX) / Cr Vendor Account (KBS). If price difference (S-price material): Dr/Cr Price Difference (PRD).",
+    issues:["Invoice blocked (amount) — check tolerance BD/BW in OMRX","Invoice blocked (price) — PO price vs invoice price variance PP exceeded","3-way match fails — GR qty < invoice qty (MRBR to release)","Duplicate invoice check — reference + vendor + amount combination"]
+  },
+  {
+    num:7, title:"Payment (Vendor)", tx:"F110 / F-53 / FBL1N",
+    category:"FI-AP",
+    desc:"The FI Accounts Payable module handles payment. The automatic payment program (F110) runs on a schedule, selects open vendor line items based on due date and cash discount, and creates payment documents and bank transfer files (DME/SEPA). Manual payment is also possible via F-53. Vendor account is cleared after payment posting.",
+    tcodes:["F110 – Automatic payment program","F-53 – Manual outgoing payment","FBZ2 – Post incoming payment","FBL1N – Vendor line items","FK10N – Vendor balance display","FBZP – Payment program configuration","F.13 – Auto GR/IR clearing","F13E – GR/IR clearing (enhanced)"],
+    docs:["Payment document (FI)","Bank clearing document","DME file / SEPA XML","Remittance advice (to vendor)"],
+    config:["Payment terms (OBB8): baseline date, days, discount %","House bank (FI12): IBAN, bank key","Payment methods (FBZP): cheque, SEPA, bank transfer","DMEE (payment medium workbench): SEPA XML structure","Tolerance for payment differences"],
+    accounting:"Accounting: Dr Vendor Account / Cr Bank Clearing Account. Bank statement reconciliation clears bank account via FF.5 / FEBP.",
+    issues:["Vendor not selected by F110 — check payment method in vendor master FI view","Due date in future — payment terms baseline date incorrect","SEPA file rejected — IBAN/BIC not maintained on vendor bank details","House bank not found — assign in vendor master or company code selection variant"]
+  }
+];
+
+const transactions = [
+  ["ME51N","Create Purchase Requisition","Purchasing","Requisitioner","Main PR creation in Enjoy interface"],
+  ["ME52N","Change Purchase Requisition","Purchasing","Buyer","Modify qty, date, account assignment"],
+  ["ME53N","Display Purchase Requisition","Purchasing","Any","Read-only view"],
+  ["ME54N","Release (Approve) PR","Purchasing","Approver","Individual release with release codes"],
+  ["ME55","Collective Release of PRs","Purchasing","Manager","Bulk approval of PRs"],
+  ["ME5A","PR List by Material","Purchasing","Buyer","Monitor open PRs"],
+  ["ME56","Assign Source to PR","Purchasing","Buyer","Source determination step"],
+  ["ME57","Assign and Process PR","Purchasing","Buyer","Source assign + convert to PO"],
+  ["ME41","Create RFQ","Purchasing","Buyer","Send bid invitations to vendors"],
+  ["ME47","Maintain Quotation","Purchasing","Buyer","Enter vendor quotation prices"],
+  ["ME49","Price Comparison List","Purchasing","Buyer","Compare vendor quotes side by side"],
+  ["ME21N","Create Purchase Order","Purchasing","Buyer","Primary PO creation (Enjoy)"],
+  ["ME22N","Change Purchase Order","Purchasing","Buyer","Modify open PO"],
+  ["ME23N","Display Purchase Order","Purchasing","Any","Read-only PO view; start of doc flow"],
+  ["ME28","Release PO (collective)","Purchasing","Manager","Approve POs in bulk"],
+  ["ME9F","Print / Output PO","Purchasing","Buyer","Manual output trigger for PO"],
+  ["ME2M","PO List by Material","Purchasing","Buyer","Monitor POs per material"],
+  ["ME2L","PO List by Vendor","Purchasing","Buyer","Monitor POs per vendor"],
+  ["MEMASSPO","Mass PO Maintenance","Purchasing","Buyer","Change multiple PO fields at once"],
+  ["MIGO","Goods Receipt / Issue","Inventory Mgmt","Warehouse","Universal goods movement transaction"],
+  ["MB03","Display Material Document","Inventory Mgmt","Warehouse","View GR/GI document"],
+  ["MMBE","Stock Overview","Inventory Mgmt","Planner","View current stock levels"],
+  ["MB52","Warehouse Stocks List","Inventory Mgmt","Planner","Unrestricted / blocked stock list"],
+  ["MB51","Material Document List","Inventory Mgmt","Warehouse","All movements for a material"],
+  ["MIRO","Logistics Invoice Verification","Invoice Verif.","AP Clerk","Enter vendor invoice against PO"],
+  ["MIR7","Park Invoice","Invoice Verif.","AP Clerk","Hold invoice for review"],
+  ["MIR4","Display Invoice Document","Invoice Verif.","Any","Read-only LIV document view"],
+  ["MRBR","Release Blocked Invoices","Invoice Verif.","AP Clerk","Unblock invoices after review"],
+  ["MR8M","Cancel Invoice Document","Invoice Verif.","AP Clerk","Reverse posted invoice"],
+  ["MRRL","ERS — Auto Invoice","Invoice Verif.","AP Clerk","Auto-create invoice on GR (ERS vendor)"],
+  ["F110","Automatic Payment Program","FI-AP","AP Manager","Scheduled vendor payment run"],
+  ["F-53","Manual Outgoing Payment","FI-AP","AP Clerk","Post individual vendor payment"],
+  ["FBL1N","Vendor Line Items","FI-AP","AP Clerk","Open / cleared items per vendor"],
+  ["FK10N","Vendor Balance","FI-AP","AP Clerk","Balance display per company code"],
+  ["F.13","Automatic GR/IR Clearing","FI-AP","AP Clerk","Clear matched GR/IR pairs"],
+  ["XK01","Create Vendor (Central)","Master Data","Admin","Create vendor in all views"],
+  ["MM01","Create Material Master","Master Data","Admin","Create material in all org levels"],
+  ["ME11","Maintain Purchasing Info Record","Master Data","Buyer","Price + delivery terms per vendor-material"],
+  ["ME01","Maintain Source List","Master Data","Buyer","Valid sources per plant-material"],
+  ["OBYC","Account Determination","Customizing","FI Consultant","Map valuation classes to G/L accounts"],
+  ["OMRX","Invoice Tolerance Configuration","Customizing","MM Consultant","Set LIV tolerance keys"],
+  ["OMJJ","Movement Type Configuration","Customizing","MM Consultant","Customise movement types"],
+  ["FBZP","Payment Program Configuration","Customizing","FI Consultant","House bank, payment methods, variants"],
+];
+
+const docData = [
+  ["Purchase Requisition","ME51N","NB","10xxxxxxxx","Plant, material/service, qty, delivery date, cost center, release group","ME52N → delete item"],
+  ["RFQ","ME41","AN","60xxxxxxxx","Submission date, quotation deadline, collective number, vendor","ME42 → close"],
+  ["Vendor Quotation","ME47","AN","60xxxxxxxx","Net price, delivery days, payment terms, validity","ME42 → reject (ABSA output)"],
+  ["Purchase Order","ME21N","NB / FO / MK","45xxxxxxxx","Vendor, plant, item, qty, price, delivery date, GR/IR indicator, tax code","ME22N → close PO (FERG)"],
+  ["Scheduling Agreement","ME31L","LPA / LP","55xxxxxxxx","Delivery schedule lines, cumulative ordered/received","ME32L → close"],
+  ["Material Document (GR)","MIGO","—","50xxxxxxxx","Movement type 101, plant, storage location, batch, GR qty","MIGO → Return (122) or Cancel (102)"],
+  ["Accounting Doc (on GR)","MIGO (auto)","WA","1xxxxxxxxx","Company code, posting period, G/L accounts, amount in doc currency","MR8M or MIGO Cancel"],
+  ["LIV Invoice Document","MIRO","RE","5xxxxxxxxx","Vendor, PO reference, tax code, amount, baseline date, payment terms","MR8M – Cancel invoice"],
+  ["Accounting Doc (MIRO)","MIRO (auto)","KR","1xxxxxxxxx","Vendor account Cr, GR/IR Dr, tax account","Reversed by MR8M"],
+  ["Payment Document","F110 / F-53","ZP","1xxxxxxxxx","Vendor cleared, bank outgoing, payment method, house bank","FB08 / FBRA – Reverse payment"],
+];
+
+const mvtTypes = [
+  {num:"101", name:"GR for PO", desc:"Goods receipt against purchase order. Most common MM movement."},
+  {num:"102", name:"GR reversal", desc:"Cancellation of movement type 101 (reverse GR)."},
+  {num:"103", name:"GR to blocked stock", desc:"GR into quality inspection / blocked stock before acceptance."},
+  {num:"104", name:"Blocked stock reversal", desc:"Reverse of 103."},
+  {num:"105", name:"Release from blocked", desc:"Transfer from quality/blocked to unrestricted use stock."},
+  {num:"122", name:"Return to vendor", desc:"Goods returned to vendor (references GR material doc)."},
+  {num:"161", name:"GR returns PO", desc:"Return delivery with reference to purchase order."},
+  {num:"201", name:"GI to cost centre", desc:"Goods issue to a cost centre — consumption posting."},
+  {num:"261", name:"GI to production order", desc:"Component withdrawal for production (PP integration)."},
+  {num:"301", name:"Stock transfer (1-step)", desc:"Transfer between plants in one step."},
+  {num:"311", name:"Transfer storage loc.", desc:"Transfer within plant between storage locations."},
+  {num:"501", name:"GR without PO ref", desc:"Receive goods without a purchase order reference."},
+  {num:"551", name:"Scrapping", desc:"Write off unusable stock — Dr scrap expense / Cr stock."},
+];
+
+const mvtTableData = [
+  ["101","GR for PO","Unrestricted +","Stock (BSX) Dr","GR/IR (WRX) Cr","Yes — PO required"],
+  ["102","Reverse GR (101)","Unrestricted −","GR/IR (WRX) Dr","Stock (BSX) Cr","Yes — Mat doc ref"],
+  ["103","GR → Blocked stock","Blocked stock +","No FI posting","—","Yes — PO required"],
+  ["105","Release blocked → unrestricted","Unrestricted +, Blocked −","Stock (BSX) Dr","GR/IR (WRX) Cr","No"],
+  ["122","Return to vendor","Unrestricted −","GR/IR (WRX) Dr","Stock (BSX) Cr","Yes — GR mat doc"],
+  ["201","GI to cost centre","Unrestricted −","Cost ctr (GBB) Dr","Stock (BSX) Cr","No"],
+  ["261","GI to production order","Unrestricted −","Prod order (GBB) Dr","Stock (BSX) Cr","No"],
+  ["301","Plant-to-plant transfer","Plant A − / Plant B +","Receiving stock Dr","Sending stock Cr","No"],
+  ["501","GR without PO","Unrestricted +","Stock (BSX) Dr","Offsetting (GBB) Cr","No"],
+  ["551","Scrapping","Unrestricted −","Scrap expense Dr","Stock (BSX) Cr","No"],
+];
+
+const configs = [
+  {
+    title:"Organisational Structure",
+    path:"Enterprise Structure → Definition / Assignment",
+    items:["Define company code → FI entity (OX02)","Create plant → EC01; assign to company code","Create purchasing organisation → assign to company code + plant","Define purchasing groups (OME4)","Create storage locations (OX09)"]
+  },
+  {
+    title:"Purchasing — Document Types",
+    path:"MM → Purchasing → Purchase Order → Define Doc Types",
+    items:["NB = standard PO (main type)","FO = framework/blanket order","MK = consignment order","LP = scheduling agreement call-off","Number ranges per document type (OMH6)"]
+  },
+  {
+    title:"Purchasing — Info Record",
+    path:"MM → Purchasing → Conditions → Purchasing Info Record",
+    items:["Define info record categories (standard, consignment, pipeline, subcontracting)","Price history active","Info update from PO (condition update)","Validity period for prices","Plant-specific vs cross-plant info records"]
+  },
+  {
+    title:"Release (Approval) Strategy",
+    path:"MM → Purchasing → PR → Release Procedure",
+    items:["Create characteristics (CT04) for CEBAN fields","Create class type 032 (CL02)","Define release groups and codes","Define release indicators (blocked / partially released / final)","Define strategies and assign classification","Test with CL24N / ME54N"]
+  },
+  {
+    title:"Inventory Management",
+    path:"MM → Inventory Management → Movement Types",
+    items:["Configure movement type 101 (OMJJ)","Enable storage location auto-creation (plant-level)","GR-based invoice verification flag on PO doc type","GR/GI slip output type (WE01/WE02/WE03)","Batch management (OMCT) if required"]
+  },
+  {
+    title:"Invoice Verification",
+    path:"MM → Logistics Invoice Verification",
+    items:["Set tolerance keys (OMRX): BD, BR, BW, DW, PP, PS, ST, VP","Configure ERS vendors (evaluated receipt settlement)","Stochastic block configuration","GR-based IV mandatory on vendor/PO","Define default tax codes for LIV company code"]
+  },
+  {
+    title:"Account Determination (OBYC)",
+    path:"MM → Valuation → Account Determination → OBYC",
+    items:["BSX → Inventory/stock G/L account","WRX → GR/IR clearing account","GBB-VBR → Consumption/cost account","GBB-AUF → GR for production order","PRD → Price difference (standard price materials)","FR1 → Freight charges clearing","AKO → GR/IR account maintenance (F.13 differences)"]
+  },
+  {
+    title:"FI-AP — Payment",
+    path:"FI → Accounts Payable → Business Transactions → Outgoing Payments",
+    items:["Payment terms (OBB8): baseline date rule, days, discount %","House bank (FI12): account ID, IBAN, bank key","Payment methods (FBZP): country-specific, company code","DMEE structure for SEPA / bank transfer file","F110 variants: selection, posting, printout, DME","Bank statement import: MT940 / CAMT.054 via FEBP"]
+  },
+];
+
+const fiEntries = [
+  ["GR against standard PO (valuated material)","MIGO Mvmt 101","Stock Account (BSX)","GR/IR Clearing (WRX)","BSX / WRX","At GR quantity × PO price"],
+  ["GR against account-assigned PO (cost centre)","MIGO Mvmt 101","Cost Centre Expense (GBB-VBR)","GR/IR Clearing (WRX)","GBB / WRX","No stock posting — expensed directly"],
+  ["GR reversal","MIGO Mvmt 102","GR/IR Clearing (WRX)","Stock Account (BSX)","WRX / BSX","Exact reversal of GR accounting doc"],
+  ["Invoice Verification — no price diff","MIRO","GR/IR Clearing (WRX)","Vendor Account (KBS)","WRX / KBS","Perfect 3-way match — WRX nets to zero"],
+  ["Invoice Verification — price difference (std price mat.)","MIRO","GR/IR Clearing (WRX) + Price Diff (PRD)","Vendor Account (KBS)","WRX / PRD / KBS","Invoice price > PO price → PRD Dr"],
+  ["Invoice Verification — price diff (MAP material)","MIRO","GR/IR Clearing (WRX)","Vendor + Stock adj. (BSX)","WRX / BSX / KBS","Moving average price updated if stock covers diff"],
+  ["Vendor payment","F110 / F-53","Vendor Account (KBS)","Bank Clearing Account","—","Vendor open item cleared; bank reconciled via FF.5"],
+  ["GR/IR clearing (open items)","F.13 / F13E","GR/IR Account (WRX)","GR/IR Account (WRX)","WRX","Netting matched GR and IR quantities"],
+  ["Delivery cost (freight) posting","MIRO — plan. del. costs","Freight Clearing (FR1)","Vendor Account (KBS)","FR1 / KBS","Only if planned delivery costs on PO"],
+  ["Return to vendor","MIGO Mvmt 122","GR/IR Clearing (WRX)","Stock Account (BSX)","WRX / BSX","Reverses the original GR posting"],
+];
+
+const checklist = [
+  {
+    ws:"1. Project setup & organisational structure", items:[
+      "Confirm project scope: which company codes, plants, purchasing orgs are in scope",
+      "Define and document organisational structure in SAP (OX02, EC01, OME4, OX09)",
+      "Assign purchasing organisation to company code and plant",
+      "Confirm valuation area: plant-level recommended for multi-plant",
+      "Document fiscal year variant and posting period settings (OB37 / MMPV)",
+    ]
+  },
+  {
+    ws:"2. Master data preparation", items:[
+      "Load vendor master records (XK01 / XK99): general, company code, purchasing views",
+      "Maintain vendor payment terms and bank details (IBAN, BIC) for payment run",
+      "Create/extend material master (MM01) — MRP 1/2, Purchasing, Accounting 1/2 views",
+      "Assign valuation class to materials (Accounting 1 view) — required for OBYC",
+      "Maintain purchasing info records (ME11) for key vendor-material combinations",
+      "Set up source lists (ME01) if source determination is mandatory at plant",
+      "Load quota arrangements (MEQ1) if multi-source splitting required",
+    ]
+  },
+  {
+    ws:"3. Purchasing configuration", items:[
+      "Configure PO document types (NB, FO, MK) and assign number ranges (OMH6)",
+      "Configure PR document types and account assignment categories",
+      "Set up release strategy for PR: characteristics (CT04), class (CL02), codes, strategy (SPRO)",
+      "Set up release strategy for PO if required",
+      "Configure output determination for PO (output type NEU, medium, partner function LF)",
+      "Define tolerance keys for PO price/quantity variance (OMRX)",
+      "Configure GR-based invoice verification flag on PO document type",
+      "Set up purchasing info record update control (condition update from PO)",
+    ]
+  },
+  {
+    ws:"4. Inventory management", items:[
+      "Verify movement type 101 configuration (OMJJ) — check allowed transactions, account keys",
+      "Enable storage location auto-creation at GR if required (plant settings)",
+      "Configure GR slip output type (WE01/WE02/WE03) and output device",
+      "Set up batch management if materials require batch-level tracking",
+      "Configure under/over delivery tolerances on PO item level",
+      "Test MIGO posting: verify material document + FI accounting document created",
+    ]
+  },
+  {
+    ws:"5. Account determination (OBYC)", items:[
+      "Map valuation classes to G/L accounts for BSX (stock) by chart of accounts",
+      "Set GR/IR clearing account for WRX",
+      "Set GBB-VBR for consumption/cost centre postings",
+      "Set GBB-AUF for production order GR (if PP in scope)",
+      "Set PRD price difference account (for standard price materials)",
+      "Set FR1 freight clearing account (if planned delivery costs on PO)",
+      "Validate account determination with FS00 — confirm G/L accounts are open for posting",
+      "Run end-to-end test: MIGO → verify BSX and WRX accounts populated correctly",
+    ]
+  },
+  {
+    ws:"6. Invoice verification & FI-AP", items:[
+      "Configure LIV tolerance keys (OMRX): BD, BW, PP, VP per company code",
+      "Set up ERS for evaluated receipt settlement vendors (if applicable)",
+      "Configure stochastic invoice block (random audit) per company code",
+      "Set default tax codes for LIV by company code",
+      "Configure payment terms (OBB8): net days, discount percentages, baseline date",
+      "Set up house bank (FI12): assign IBAN and bank key",
+      "Configure payment methods (FBZP): SEPA, cheque, bank transfer",
+      "Set up DMEE structure for bank transfer/SEPA XML output",
+      "Schedule F.13 / F13E GR/IR clearing job (automated)",
+      "Configure F110 selection and posting variants",
+    ]
+  },
+  {
+    ws:"7. Testing & quality assurance", items:[
+      "Unit test: PR creation → release → PO conversion (ME51N → ME54N → ME21N)",
+      "Unit test: RFQ → quotation entry → price comparison → PO (ME41 → ME47 → ME49 → ME21N)",
+      "Unit test: GR posting (MIGO mvmt 101) — check material doc + FI doc generated",
+      "Unit test: Invoice verification (MIRO) — 3-way match, blocked invoice, release (MRBR)",
+      "Unit test: Payment run (F110) — verify DME file + vendor clearing",
+      "Integration test: full cycle PR → PO → GR → MIRO → F110 in one test case",
+      "Test release strategy: PR below threshold (no approval), above threshold (2-level approval)",
+      "Test price difference posting: invoice price ≠ PO price — verify PRD account",
+      "Test GR return (mvmt 122) and invoice cancellation (MR8M)",
+      "Test GR/IR clearing (F.13) for matched and unmatched items",
+    ]
+  },
+  {
+    ws:"8. Cutover & go-live", items:[
+      "Agree cutover date and freeze period for legacy system",
+      "Migrate open purchase orders from legacy (BAPIs or LSMW: BAPI_PO_CREATE1)",
+      "Migrate open vendor balances to FI-AP (FB60 or migration cockpit)",
+      "Confirm number ranges do not conflict between legacy and SAP",
+      "Execute dry-run cutover in pre-production system",
+      "Confirm authorisation roles are assigned to all end users",
+      "Conduct end-user training: requisitioners, buyers, warehouse, AP clerks",
+      "Prepare hypercare plan: support coverage for first 2 weeks post go-live",
+      "Validate first real GR and MIRO postings on go-live day",
+    ]
+  }
+];
+
+// ═══════════════════════════════
+// RENDER FUNCTIONS
+// ═══════════════════════════════
+
+function renderStages() {
+  const c = document.getElementById('stages-container');
+  stages.forEach((s, i) => {
+    if (i > 0) {
+      const conn = document.createElement('div');
+      conn.className = 'stage-connector';
+      c.appendChild(conn);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'stage-wrap';
+    wrap.innerHTML = `
+      <div class="stage-card" id="sc${i}">
+        <div class="stage-header" onclick="toggleStage(${i})">
+          <div class="stage-num">${s.num}</div>
+          <div class="stage-meta">
+            <div class="stage-title">${s.title}</div>
+            <div class="stage-subtitle">${s.tx}</div>
+          </div>
+          <div class="stage-tags">
+            <span class="tag tag-blue">${s.category}</span>
+          </div>
+          <div class="stage-toggle">▾</div>
+        </div>
+        <div class="stage-body">
+          <div class="sb-grid">
+            <div class="sb-block" style="grid-column:1/-1">
+              <h4>What happens</h4>
+              <p>${s.desc}</p>
+            </div>
+            <div class="sb-block">
+              <h4>Transaction Codes</h4>
+              <div class="chip-list">${s.tcodes.map(t=>`<span class="chip tx">${t}</span>`).join('')}</div>
+            </div>
+            <div class="sb-block">
+              <h4>Documents Created</h4>
+              <div class="chip-list">${s.docs.map(d=>`<span class="chip doc">${d}</span>`).join('')}</div>
+            </div>
+            <div class="sb-block">
+              <h4>Configuration Objects</h4>
+              <div class="chip-list">${s.config.map(c=>`<span class="chip cfg">${c}</span>`).join('')}</div>
+            </div>
+            <div class="sb-block">
+              <h4>Accounting Impact</h4>
+              <p>${s.accounting}</p>
+            </div>
+            <div class="sb-block" style="grid-column:1/-1">
+              <h4>Common Issues &amp; Tips</h4>
+              <div class="chip-list">${s.issues.map(i=>`<span class="chip">${i}</span>`).join('')}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    c.appendChild(wrap);
+  });
+}
+
+function toggleStage(i) {
+  const card = document.getElementById('sc' + i);
+  card.classList.toggle('open');
+}
+
+function renderTx() {
+  const areaColors = {
+    'Purchasing': 'tag-blue',
+    'Inventory Mgmt': 'tag-green',
+    'Invoice Verif.': 'tag-amber',
+    'FI-AP': 'tag-green',
+    'Master Data': 'tag-teal',
+    'Customizing': 'tag-red'
+  };
+  const tb = document.getElementById('tx-body');
+  transactions.forEach(r => {
+    const tr = document.createElement('tr');
+    const area = r[2];
+    tr.innerHTML = `
+      <td class="mono-cell">${r[0]}</td>
+      <td>${r[1]}</td>
+      <td><span class="tag ${areaColors[area]||'tag-blue'}">${area}</span></td>
+      <td class="muted">${r[3]}</td>
+      <td class="muted">${r[4]}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderDocs() {
+  const tb = document.getElementById('doc-body');
+  docData.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:500">${r[0]}</td>
+      <td class="mono-cell">${r[1]}</td>
+      <td class="mono-cell">${r[2]}</td>
+      <td class="mono-cell">${r[3]}</td>
+      <td class="muted">${r[4]}</td>
+      <td class="muted">${r[5]}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderMvt() {
+  const grid = document.getElementById('mvt-grid');
+  mvtTypes.slice(0,8).forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'mvt-card';
+    card.innerHTML = `<div class="mvt-num">${m.num}</div><div class="mvt-name">${m.name}</div><div class="mvt-desc">${m.desc}</div>`;
+    grid.appendChild(card);
+  });
+  const tb = document.getElementById('mvt-body');
+  mvtTableData.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono-cell">${r[0]}</td>
+      <td style="font-weight:500">${r[1]}</td>
+      <td class="muted">${r[2]}</td>
+      <td style="color:var(--green);font-size:12px">${r[3]}</td>
+      <td style="color:var(--red);font-size:12px">${r[4]}</td>
+      <td class="muted">${r[5]}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderConfig() {
+  const grid = document.getElementById('cfg-grid');
+  configs.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'cfg-card';
+    card.innerHTML = `
+      <h4>${c.title}</h4>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--amber);margin-bottom:8px">${c.path}</div>
+      <ul>${c.items.map(i=>`<li>${i}</li>`).join('')}</ul>`;
+    grid.appendChild(card);
+  });
+}
+
+function renderFI() {
+  const tb = document.getElementById('fi-body');
+  fiEntries.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:500">${r[0]}</td>
+      <td class="mono-cell">${r[1]}</td>
+      <td style="color:var(--green);font-size:12px">${r[2]}</td>
+      <td style="color:var(--red);font-size:12px">${r[3]}</td>
+      <td class="mono-cell">${r[4]}</td>
+      <td class="muted">${r[5]}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+const clState = {};
+function renderChecklist() {
+  checklist.forEach((ws, wi) => {
+    ws.items.forEach((_, ii) => { clState[`${wi}-${ii}`] = false; });
+  });
+  redrawChecklist();
+}
+
+function redrawChecklist() {
+  const container = document.getElementById('checklist-container');
+  const total = Object.keys(clState).length;
+  const done = Object.values(clState).filter(Boolean).length;
+  document.getElementById('main-progress').style.width = (total ? (done/total*100) : 0) + '%';
+  document.getElementById('cl-total').textContent = `${done} of ${total} tasks complete`;
+  container.innerHTML = '';
+  checklist.forEach((ws, wi) => {
+    const wsDone = ws.items.filter((_, ii) => clState[`${wi}-${ii}`]).length;
+    const group = document.createElement('div');
+    group.className = 'cl-group';
+    const header = document.createElement('div');
+    header.className = 'cl-group-header';
+    header.innerHTML = `<h4>${ws.ws}</h4><span class="cl-progress">${wsDone}/${ws.items.length}</span>`;
+    group.appendChild(header);
+    const items = document.createElement('div');
+    items.className = 'cl-items';
+    ws.items.forEach((item, ii) => {
+      const key = `${wi}-${ii}`;
+      const row = document.createElement('div');
+      row.className = 'cl-item' + (clState[key] ? ' done' : '');
+      row.innerHTML = `
+        <div class="cl-check">${clState[key] ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</div>
+        <span class="cl-text">${item}</span>`;
+      row.onclick = () => { clState[key] = !clState[key]; redrawChecklist(); };
+      items.appendChild(row);
+    });
+    group.appendChild(items);
+    container.appendChild(group);
+  });
+}
+
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Init all
+renderStages();
+renderTx();
+renderDocs();
+renderMvt();
+renderConfig();
+renderFI();
+renderChecklist();
+// Open first stage by default
+setTimeout(() => toggleStage(0), 100);
+</script>
+</body>
+</html>
